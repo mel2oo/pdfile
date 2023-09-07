@@ -13,6 +13,8 @@ import (
 
 	"github.com/h2non/filetype"
 	"github.com/ledongthuc/pdf"
+	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
 
 type Output struct {
@@ -69,7 +71,26 @@ func Parse(filepath string, password string) (*Output, error) {
 		}
 	}
 
+	// use github.com/pdfcpu/pdfcpu
+	extractImgesWithpdfcpu(filepath, output)
 	return output, nil
+}
+
+func extractImgesWithpdfcpu(inFile string, output *Output) error {
+	f, err := os.Open(inFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return pdfcpuapi.ExtractImages(f, nil, func(i1 model.Image, b bool, i2 int) error {
+		data, err := io.ReadAll(i1)
+		if err != nil {
+			return err
+		}
+		output.AddFile("", data)
+		return nil
+	}, nil)
 }
 
 // chiRex is a regexp to replace chinese characters

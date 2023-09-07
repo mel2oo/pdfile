@@ -27,7 +27,6 @@ type Embedded struct {
 	Name string        `json:"name"`
 	Type string        `json:"type"`
 	Hash string        `json:"hash"`
-	Path string        `json:"path"`
 	File io.ReadWriter `json:"-"`
 }
 
@@ -112,7 +111,8 @@ func (o *Output) AddFile(name string, data []byte) {
 	}
 
 	magic, err := filetype.Get(data)
-	if err != nil || filetype.IsFont(data) ||
+	if err != nil ||
+		filetype.IsFont(data) ||
 		magic.Extension == filetype.Unknown.Extension {
 		return
 	}
@@ -135,18 +135,15 @@ func (o *Output) Dump(dir string) {
 		os.MkdirAll(dir, 0755)
 	}
 
-	for index, emb := range o.Files {
+	for _, emb := range o.Files {
 		path := path.Join(dir, fmt.Sprintf("%s-%s", emb.Hash, emb.Name))
 
 		fi, err := os.Create(path)
 		if err != nil {
-			return
+			continue
 		}
 		defer fi.Close()
 
-		_, err = io.Copy(fi, emb.File)
-		if err == nil {
-			o.Files[index].Path = path
-		}
+		io.Copy(fi, emb.File)
 	}
 }

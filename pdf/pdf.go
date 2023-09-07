@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/h2non/filetype"
 	"github.com/ledongthuc/pdf"
@@ -71,13 +73,27 @@ func Parse(filepath string, password string) (*Output, error) {
 	return output, nil
 }
 
-func (o *Output) AddUrl(url string) {
-	for _, u := range o.URLs {
-		if u == url {
+// chiRex is a regexp to replace chinese characters
+var chiRex = regexp.MustCompile("[\u4e00-\u9fa5]")
+
+func (o *Output) AddUrl(rawUrl string) {
+	U, err := url.Parse(rawUrl)
+	if err != nil {
+		return
+	}
+	// check if the host is chinese
+	if chiRex.MatchString(U.Host) {
+		// remove chinese characters
+		U.Host = chiRex.ReplaceAllString(U.Host, "")
+		rawUrl = U.String()
+	}
+
+	for _, v := range o.URLs {
+		if v == rawUrl {
 			return
 		}
 	}
-	o.URLs = append(o.URLs, url)
+	o.URLs = append(o.URLs, rawUrl)
 }
 
 func (o *Output) AddFile(name string, data []byte) {

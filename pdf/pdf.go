@@ -6,10 +6,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/h2non/filetype"
+	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
 
 type Output struct {
@@ -24,7 +28,6 @@ type Embedded struct {
 	Name string        `json:"name"`
 	Type string        `json:"type"`
 	Hash string        `json:"hash"`
-	Path string        `json:"path"`
 	File io.ReadWriter `json:"-"`
 }
 
@@ -54,16 +57,62 @@ func Parse(filepath string, password string) (*Output, error) {
 		}
 	}
 
+	// use github.com/ledongthuc/pdf
+	// f, r, err := pdf.Open(filepath)
+	// if err == nil {
+	// 	defer f.Close()
+
+	// 	b, err := r.GetPlainText()
+	// 	if err == nil {
+	// 		var buf bytes.Buffer
+	// 		buf.ReadFrom(b)
+	// 		output.Content = buf.String()
+	// 	}
+	// }
+
+	// use github.com/pdfcpu/pdfcpu
+	extractImgesWithpdfcpu(filepath, output)
 	return output, nil
 }
 
-func (o *Output) AddUrl(url string) {
-	for _, u := range o.URLs {
-		if u == url {
+func extractImgesWithpdfcpu(inFile string, output *Output) error {
+	f, err := os.Open(inFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return pdfcpuapi.ExtractImages(f, nil, func(i1 model.Image, b bool, i2 int) error {
+		data, err := io.ReadAll(i1)
+		if err != nil {
+			return err
+		}
+		output.AddFile("", data)
+		return nil
+	}, nil)
+}
+
+// chiRex is a regexp to replace chinese characters
+var chiRex = regexp.MustCompile("[\u4e00-\u9fa5]")
+
+func (o *Output) AddUrl(rawUrl string) {
+	U, err := url.Parse(rawUrl)
+	if err != nil {
+		return
+	}
+	// check if the host is chinese
+	if chiRex.MatchString(U.Host) {
+		// remove chinese characters
+		U.Host = chiRex.ReplaceAllString(U.Host, "")
+		rawUrl = U.String()
+	}
+
+	for _, v := range o.URLs {
+		if v == rawUrl {
 			return
 		}
 	}
-	o.URLs = append(o.URLs, url)
+	o.URLs = append(o.URLs, rawUrl)
 }
 
 func (o *Output) AddFile(name string, data []byte) {
@@ -82,7 +131,8 @@ func (o *Output) AddFile(name string, data []byte) {
 	}
 
 	magic, err := filetype.Get(data)
-	if err != nil || filetype.IsFont(data) ||
+	if err != nil ||
+		filetype.IsFont(data) ||
 		magic.Extension == filetype.Unknown.Extension {
 		return
 	}
@@ -105,18 +155,15 @@ func (o *Output) Dump(dir string) {
 		os.MkdirAll(dir, 0755)
 	}
 
-	for index, emb := range o.Files {
+	for _, emb := range o.Files {
 		path := path.Join(dir, fmt.Sprintf("%s-%s", emb.Hash, emb.Name))
 
 		fi, err := os.Create(path)
 		if err != nil {
-			return
+			continue
 		}
 		defer fi.Close()
 
-		_, err = io.Copy(fi, emb.File)
-		if err == nil {
-			o.Files[index].Path = path
-		}
+		io.Copy(fi, emb.File)
 	}
 }

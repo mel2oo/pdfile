@@ -62,13 +62,13 @@ func extract(o Object, output *Output) {
 		if xfa, ok := d.GetStream("XFA"); ok {
 			output.AddFile("form.xml", xfa)
 		} else if xfa, ok := d.GetArray("XFA"); ok {
-			var form_data strings.Builder
+			form_data := make([]byte, 0)
 			for i := range xfa {
 				if s, ok := xfa.GetStream(i); ok {
-					form_data.WriteString(string(s))
+					form_data = append(form_data, s...)
 				}
 			}
-			output.AddFile("form.xml", []byte(form_data.String()))
+			output.AddFile("form.xml", form_data)
 		}
 
 		// dump Embedded Files

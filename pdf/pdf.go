@@ -10,7 +10,6 @@ import (
 	"path"
 
 	"github.com/h2non/filetype"
-	"github.com/ledongthuc/pdf"
 )
 
 type Output struct {
@@ -52,19 +51,6 @@ func Parse(filepath string, password string) (*Output, error) {
 			object := parser.GetObject(object_number)
 			object.Extract(output)
 			output.AddFile("", object.Stream)
-		}
-	}
-
-	// use github.com/ledongthuc/pdf
-	f, r, err := pdf.Open(filepath)
-	if err == nil {
-		defer f.Close()
-
-		b, err := r.GetPlainText()
-		if err == nil {
-			var buf bytes.Buffer
-			buf.ReadFrom(b)
-			output.Content = buf.String()
 		}
 	}
 

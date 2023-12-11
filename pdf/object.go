@@ -86,9 +86,13 @@ func extract(o Object, output *Output) {
 
 		// dump javascript
 		if js, ok := d.GetString("JS"); ok {
-			output.Javascript = append(output.Javascript, js)
+			if len(js) > 0 {
+				output.Javascript = append(output.Javascript, js)
+			}
 		} else if js, ok := d.GetStream("JS"); ok {
-			output.Javascript = append(output.Javascript, string(js))
+			if len(js) > 0 {
+				output.Javascript = append(output.Javascript, string(js))
+			}
 		}
 
 		// dump page text

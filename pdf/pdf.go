@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/h2non/filetype"
 	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
@@ -131,6 +132,14 @@ func (o *Output) AddFile(name string, data []byte) {
 	}
 
 	magic, err := filetype.Get(data)
+
+	if magic.Extension == filetype.Unknown.Extension &&
+		strings.Contains(strings.ToLower(string(data)), "<script>") {
+		magic.Extension = "js"
+		o.Javascript = append(o.Javascript, string(data))
+
+	}
+
 	if err != nil ||
 		filetype.IsFont(data) ||
 		magic.Extension == filetype.Unknown.Extension {

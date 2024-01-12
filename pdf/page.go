@@ -33,6 +33,7 @@ func (page Page) Extract(output *Output) {
 
 func (page Page) extract(output *Output, font_map map[string]*Font, contents []byte) {
 	// create parser for parsing contents
+	// fmt.Printf(string(contents))
 	page_parser := NewParser(bytes.NewReader(contents), nil)
 
 	for {
@@ -62,8 +63,16 @@ func (page Page) extract(output *Output, font_map map[string]*Font, contents []b
 					} else {
 						current_font = FontDefault
 					}
-				} else if command == KEYWORD_TEXT_SHOW_1 || command == KEYWORD_TEXT_SHOW_2 || command == KEYWORD_TEXT_SHOW_3 {
+				} else if command == KEYWORD_TEXT_SHOW_1 {
+
+					s, _ := operands.GetString(len(operands) - 1)
+
+					output.Content += current_font.Decode([]byte(s))
+
+				} else if command == KEYWORD_TEXT_SHOW_2 || command == KEYWORD_TEXT_SHOW_3 {
 					// decode text with current font font
+
+					output.Content += "\n"
 					s, _ := operands.GetString(len(operands) - 1)
 					output.Content += current_font.Decode([]byte(s))
 				} else if command == KEYWORD_TEXT_POSITION {
@@ -72,9 +81,11 @@ func (page Page) extract(output *Output, font_map map[string]*Font, contents []b
 					a, _ := operands.GetArray(len(operands) - 1)
 					for i := 0; i < len(a); i += 2 {
 						s, _ := a.GetString(i)
+
 						sb.WriteString(string(s))
+
 					}
-					output.Content += current_font.Decode([]byte(sb.String()))
+					output.Content += current_font.Decode([]byte(sb.String())) + "\n"
 				}
 			}
 		}

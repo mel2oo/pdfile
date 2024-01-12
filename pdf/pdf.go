@@ -58,18 +58,12 @@ func Parse(filepath string, password string) (*Output, error) {
 		}
 	}
 
-	// use github.com/ledongthuc/pdf
-	// f, r, err := pdf.Open(filepath)
-	// if err == nil {
-	// 	defer f.Close()
+	data, err := ExtractInPoppler(filepath)
 
-	// 	b, err := r.GetPlainText()
-	// 	if err == nil {
-	// 		var buf bytes.Buffer
-	// 		buf.ReadFrom(b)
-	// 		output.Content = buf.String()
-	// 	}
-	// }
+	// r, err := Parse(path, "")
+	if err != nil {
+		output.Content = string(data)
+	}
 
 	// use github.com/pdfcpu/pdfcpu
 	extractImgesWithpdfcpu(filepath, output)

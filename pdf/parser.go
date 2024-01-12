@@ -3,6 +3,7 @@ package pdf
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"regexp"
 	"sort"
@@ -31,6 +32,13 @@ func NewParser(readSeeker io.ReadSeeker, output *Output) *Parser {
 }
 
 func (parser *Parser) Load(password string) error {
+
+	buf := make([]byte, 10)
+	parser.Read(buf)
+	if !bytes.HasPrefix(buf, []byte("%PDF-1.")) || buf[7] < '0' || buf[7] > '7' || buf[8] != '\r' && buf[8] != '\n' {
+		return fmt.Errorf("not a PDF file: invalid header")
+	}
+
 	// find location of all xref tables
 	xref_offsets := parser.findXrefOffsets()
 
@@ -136,11 +144,11 @@ func (parser *Parser) findObjects() map[int]*XrefEntry {
 		// get object number, generation
 		n, g, _ := parser.ReadObjectHeader()
 
-		// add xref entry
-		objects[n] = NewXrefEntry(offset+int64(index[0]), g, XrefTypeIndirectObject)
-
 		// determine if object is xref stream
 		d := parser.ReadDictionary(noDecryptor)
+		// add xref entry
+		objects[n] = NewXrefEntry(offset+int64(index[0]), g, XrefTypeIndirectObject, &d)
+
 		if t, ok := d.GetName("Type"); ok && t == "XRef" {
 			objects[n].IsXrefStream = true
 			objects[n].IsEncrypted = false
@@ -198,7 +206,7 @@ func (parser *Parser) loadXref(offset int64, offsets map[int64]interface{}) {
 			parser.Seek(offset, io.SeekStart)
 			if n, g, ok := parser.ReadObjectHeader(); ok {
 				// prevent decrypting xref streams
-				parser.Xref[n] = NewXrefEntry(offset, g, XrefTypeIndirectObject)
+				parser.Xref[n] = NewXrefEntry(offset, g, XrefTypeIndirectObject, nil)
 				parser.Xref[n].IsEncrypted = false
 
 				// read the xref object
@@ -249,7 +257,7 @@ func (parser *Parser) loadXrefTable(offsets map[int64]interface{}) {
 			object_number := subsection_start + i
 
 			// add the object to xrefs
-			xrefs[object_number] = NewXrefEntry(offset, generation, xref_type)
+			xrefs[object_number] = NewXrefEntry(offset, generation, xref_type, nil)
 		}
 	}
 
@@ -358,12 +366,12 @@ func (parser *Parser) loadXrefStream(n int, offsets map[int64]interface{}) {
 			object_number := subsection_start + j
 
 			// add the object to the xrefs
-			parser.Xref[object_number] = NewXrefEntry(offset, generation, xref_type)
+			parser.Xref[object_number] = NewXrefEntry(offset, generation, xref_type, nil)
 		}
 	}
 
 	// dont decrypt xref streams
-	parser.Xref[object.Number] = NewXrefEntry(xref_stream_offset, object.Generation, XrefTypeIndirectObject)
+	parser.Xref[object.Number] = NewXrefEntry(xref_stream_offset, object.Generation, XrefTypeIndirectObject, nil)
 	parser.Xref[object.Number].IsEncrypted = false
 }
 
@@ -685,6 +693,7 @@ func (parser *Parser) ReadHexString(decryptor Decryptor) String {
 				}
 				s_data := []byte(s.String())
 				decryptor.Decrypt(s_data)
+
 				return String(s_data)
 			}
 			if !IsHex(b) {

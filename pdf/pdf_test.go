@@ -87,6 +87,14 @@ func TestPDF7(t *testing.T) {
 	t.Log(r)
 	fmt.Printf("%scontext:%s\n", "1510291951580000013_PSlQoBuBUUOKOvEsPKmDE", r.Content)
 }
+func TestPDF8(t *testing.T) {
+	r, err := Parse("../testfile/pdf-Kimsuky-de2a8a728f81d44562bfd3e91c95f002.bin", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	fmt.Printf("%scontext:%s\n", "1510291951580000013_PSlQoBuBUUOKOvEsPKmDE", r.Content)
+}
 
 // func TestPdf6(t *testing.T) {
 

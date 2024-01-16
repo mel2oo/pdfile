@@ -35,7 +35,7 @@ func (parser *Parser) Load(password string) error {
 
 	buf := make([]byte, 10)
 	parser.Read(buf)
-	if !bytes.HasPrefix(buf, []byte("%PDF-1.")) || buf[7] < '0' || buf[7] > '7' || buf[8] != '\r' && buf[8] != '\n' {
+	if !bytes.HasPrefix(buf, []byte("%PDF-")) || buf[7] < '0' || buf[7] > '7' || buf[8] != '\r' && buf[8] != '\n' {
 		return fmt.Errorf("not a PDF file: invalid header")
 	}
 
